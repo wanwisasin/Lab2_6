@@ -1,28 +1,62 @@
 <script setup lang="ts">
 import PassengerCard from '@/components/PassengerCard.vue'
 import type { Passenger } from '@/types'
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed, watchEffect } from 'vue'
 import PassengerService from '@/services/PassengerService'
+import { useRoute } from 'vue-router'
 
-const passengers = ref<Passenger[]>([])
+const route = useRoute()
+
+const psgs = ref<Passenger[] | null>(null)
+
+const totalPassengers = ref(0)
+
+const size = computed(() => parseInt(route.query.size as string) || 4)
+const page = computed(() => parseInt(route.query.page as string) || 0)
+
+const hasNextPage = computed(() => {
+  const totalPages = Math.ceil(totalPassengers.value / size.value)
+  return page.value < totalPages
+})
 
 onMounted(() => {
-  PassengerService.getEvents()
-
-    .then((response) => {
-      console.log(response)
-      passengers.value = response.data.data
-    })
-    .catch((error) => {
-      console.error('There was an error!', error)
-    })
+  watchEffect(() => {
+    psgs.value = null
+    PassengerService.getPassengers(page.value, size.value)
+      .then((response) => {
+        psgs.value = response.data.data
+        totalPassengers.value = response.data.totalPassengers
+      })
+      .catch((error) => {
+        console.error('There was an error!', error)
+      })
+  })
 })
 </script>
 
 <template>
-  <h1>Passenger Information</h1>
-  <div class="passengers">
-    <PassengerCard v-for="passenger in passengers" :key="passenger._id" :passenger="passenger" />
+  <h1>Passenger List</h1>
+  <div class="passengers" v-if="psgs">
+    <PassengerCard v-for="passenger in psgs" :key="passenger._id" :psg="passenger" />
+    <div class="pagination">
+      <RouterLink
+        id="page-prev"
+        :to="{ name: 'passenger-list-view', query: { page: page - 1, size: size } }"
+        rel="prev"
+        v-if="page != 0"
+        >&#60; Prev Page</RouterLink
+      >
+      <RouterLink
+        id="page-next"
+        :to="{ name: 'passenger-list-view', query: { page: page + 1, size: size } }"
+        rel="next"
+        v-if="hasNextPage"
+        >Next Page &#62;</RouterLink
+      >
+    </div>
+  </div>
+  <div v-else>
+    <p>Loading...</p>
   </div>
 </template>
 
@@ -31,5 +65,23 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
+}
+.pagination {
+  display: flex;
+  width: 290px;
+}
+.pagination a {
+  flex: 1;
+  text-decoration: none;
+  color: #2c3e50;
+}
+.pagination a:hover {
+  color: #6c7bbe;
+}
+#page-prev {
+  text-align: left;
+}
+#page-next {
+  text-align: right;
 }
 </style>

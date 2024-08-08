@@ -4,7 +4,7 @@ export interface Airline {
   country: string
   logo: string
   slogan: string
-  head_quarters: string
+  head_quaters: string
   website: string
   established: string
 }
@@ -14,4 +14,5 @@ export interface Passenger {
   name: string
   trips: number
   airline: Airline[]
+  __v: number
 }
